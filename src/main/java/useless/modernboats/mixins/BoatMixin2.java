@@ -9,12 +9,10 @@ import net.minecraft.core.entity.Entity;
 import net.minecraft.core.entity.vehicle.EntityBoat;
 import net.minecraft.core.util.helper.MathHelper;
 import net.minecraft.core.util.phys.AABB;
-import net.minecraft.core.util.phys.Vec3d;
 import net.minecraft.core.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import useless.modernboats.ModernBoats;
 
 import java.util.List;
 
@@ -56,27 +54,12 @@ public class BoatMixin2 extends Entity {
     private int tick = 0;*/
 
     @Unique
-    private final double forwardsMaxSpeed = 0.8;
-    @Unique
-    private final double backwardsMaxSpeed = 0.3;
-    @Unique
-    private final double rotationSpeed = 8;
-    @Unique
     private double rotationVelocity = 0;
-    @Unique
-    private final double rotationAcceleration = 1;
-    @Unique
-    private final double boatAcceleration = 0.01;
-    @Unique
-    private final double backwardsAccelerationModifier = 0.5;
     @Unique
     private boolean isMovingBackward = false;
     @Unique
     private double vectorMagnitude = 0;
-    @Unique
-    private Input passangerInput;
-    @Unique
-    private boolean attemptingMotion = false;
+
     @Override
     public void tick() {
         //tick++;
@@ -90,13 +73,15 @@ public class BoatMixin2 extends Entity {
             --this.boatCurrentDamage;
         }
 
-        attemptingMotion = false;
+        boolean attemptingMotion = false;
+        Input passangerInput;
         if (passenger != null){
             // Establish access to passengers inputs
             passangerInput = ((EntityPlayerSP)passenger).input;
 
             // Acceleration for turning
             if (Math.abs(passangerInput.moveStrafe) > 0.1){
+                double rotationAcceleration = 1;
                 rotationVelocity += rotationAcceleration * -passangerInput.moveStrafe;
                 vectorMagnitude *= 0.95;
             }
@@ -105,12 +90,14 @@ public class BoatMixin2 extends Entity {
                 rotationVelocity *= .75;
             }
 
+            double rotationSpeed = 8;
             rotationVelocity = bindToRange(rotationVelocity, this.onGround ? rotationSpeed * 0.5 : rotationSpeed);
 
             // Rotate boat based of player strafe inputs
             this.yRot +=  rotationVelocity;
 
             // Movement speed when moving forward
+            double boatAcceleration = 0.01;
             if (passangerInput.moveForward > 0.1){
                 isMovingBackward = false;
                 attemptingMotion = true;
@@ -120,6 +107,7 @@ public class BoatMixin2 extends Entity {
             else if (passangerInput.moveForward < -0.1) {
                 isMovingBackward = true;
                 attemptingMotion = true;
+                double backwardsAccelerationModifier = 0.5;
                 vectorMagnitude += -passangerInput.moveForward * ((vectorMagnitude < 0) ? 1 : backwardsAccelerationModifier) * boatAcceleration;
             }
 
@@ -127,15 +115,14 @@ public class BoatMixin2 extends Entity {
                 passenger = null;
             }
         }
-        else {
-            passangerInput = null;
-        }
 
         // Caps boat speed
         if (vectorMagnitude < 0) {
+            double forwardsMaxSpeed = 0.8;
             vectorMagnitude = bindToRange(vectorMagnitude, forwardsMaxSpeed);
         }
         else {
+            double backwardsMaxSpeed = 0.3;
             vectorMagnitude = bindToRange(vectorMagnitude, backwardsMaxSpeed);
         }
 
@@ -147,7 +134,7 @@ public class BoatMixin2 extends Entity {
         vectorMagnitude = realSpeed() * Math.signum(vectorMagnitude);
 
         /*if (tick % 5 == 0){
-            ModernBoats.LOGGER.info(String.format("VectorMaginitude:%s | RealSpeed:%s", vectorMagnitude, realSpeed()));
+            ModernBoats.LOGGER.info(String.format("VectorMagnitude:%s | RealSpeed:%s", vectorMagnitude, realSpeed()));
         }*/
 
 
@@ -207,8 +194,8 @@ public class BoatMixin2 extends Entity {
     private void generateSplashes(){
         double speed = realSpeed();
         if (speed > 0.15) {
-            double xComp = Math.cos(Math.toRadians((double)this.yRot));
-            double yComp = Math.sin(Math.toRadians((double)this.yRot));
+            double xComp = Math.cos(Math.toRadians(this.yRot));
+            double yComp = Math.sin(Math.toRadians(this.yRot));
 
             for(int i1 = 0; (double)i1 < 1.0 + speed * 60.0; ++i1) {
                 double d18 = (double)(this.random.nextFloat() * 2.0F - 1.0F);
@@ -237,10 +224,7 @@ public class BoatMixin2 extends Entity {
             }
         }
     }
-    @Unique
-    private double bindToRange(double value, double minValue, double maxValue){
-        return Math.min(Math.max(value, minValue), maxValue);
-    }
+
     @Unique
     private double bindToRange(double value, double absMinMax){
         return Math.min(Math.max(value, -absMinMax), absMinMax);
@@ -258,8 +242,8 @@ public class BoatMixin2 extends Entity {
         List<Entity> list = this.world.getEntitiesWithinAABBExcludingEntity(this, this.bb.expand(0.2F, 0.0, 0.2F));
         if (list != null && list.size() > 0) {
             for (Entity value : list) {
-                if ((Entity) value != this.passenger && ((Entity) value).isPushable() && (Entity) value instanceof EntityBoat) {
-                    ((Entity) value).push(this);
+                if (value != this.passenger && value.isPushable() && value instanceof EntityBoat) {
+                    value.push(this);
                 }
             }
         }
