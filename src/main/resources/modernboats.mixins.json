@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "useless.modernboats.mixins",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "BoatMixin2"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

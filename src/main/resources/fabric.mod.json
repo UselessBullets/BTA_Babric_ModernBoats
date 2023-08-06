@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "id": "examplemod",
-  "version": "${version}",
+  "id": "modernboats",
+  "version": "1.2.0",
 
-  "name": "Example Mod",
-  "description": "This mod aims to help new BTA modders.",
+  "name": "Modern Boat Controls",
+  "description": "Boat controls more inline with the post r1.13 boat controls.",
   "authors": [
-    "Turnip Labs"
+    "Useless"
   ],
   "contact": {
     "homepage": "",
@@ -18,11 +18,11 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-        "turniplabs.examplemod.ExampleMod"
+      "useless.modernboats.ModernBoats"
     ]
   },
   "mixins": [
-      "examplemod.mixins.json"
+    "modernboats.mixins.json"
   ],
 
   "depends": {
