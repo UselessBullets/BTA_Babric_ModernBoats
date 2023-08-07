@@ -11,6 +11,7 @@ import net.minecraft.core.util.helper.MathHelper;
 import net.minecraft.core.util.phys.AABB;
 import net.minecraft.core.world.World;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -60,8 +61,21 @@ public class BoatMixin2 extends Entity {
     @Unique
     private double vectorMagnitude = 0;
 
-    @Override
-    public void tick() {
+    /**
+     * @author Useless
+     * @reason Modify boat behavior for single-player but retain original for multiplayer
+     */
+    @Overwrite
+    public void tick(){
+        if (!world.isClientSide){
+            tickSinglePlayer();;
+        }
+        else{
+            tickMultiplayer();
+        }
+    }
+    @Unique
+    public void tickSinglePlayer() {
         //tick++;
         super.tick();
 
@@ -165,6 +179,146 @@ public class BoatMixin2 extends Entity {
 
     }
 
+    @Unique
+    public void tickMultiplayer(){
+        super.tick();
+        if (this.boatTimeSinceHit > 0) {
+            --this.boatTimeSinceHit;
+        }
+
+        if (this.boatCurrentDamage > 0) {
+            --this.boatCurrentDamage;
+        }
+
+        this.xo = this.x;
+        this.yo = this.y;
+        this.zo = this.z;
+        int i = 5;
+        double d = 0.0;
+
+        for (int j = 0; j < i; ++j) {
+            double d5 = this.bb.minY + (this.bb.maxY - this.bb.minY) * (double) j / (double) i - 0.125;
+            double d9 = this.bb.minY + (this.bb.maxY - this.bb.minY) * (double) (j + 1) / (double) i - 0.125;
+            AABB axisalignedbb = AABB.getBoundingBoxFromPool(this.bb.minX, d5, this.bb.minZ, this.bb.maxX, d9, this.bb.maxZ);
+            if (this.world.isAABBInMaterial(axisalignedbb, Material.water)) {
+                d += 1.0 / (double) i;
+            }
+        }
+
+        if (d < 1.0) {
+            double d3 = d * 2.0 - 1.0;
+            this.yd += 0.04F * d3;
+        } else {
+            if (this.yd < 0.0) {
+                this.yd /= 2.0;
+            }
+
+            this.yd += 0.007F;
+        }
+
+        if (this.passenger != null) {
+            this.xd += this.passenger.xd * 0.4;
+            this.zd += this.passenger.zd * 0.4;
+        }
+
+        double maxSpeed = 0.8;
+        if (this.xd < -maxSpeed) {
+            this.xd = -maxSpeed;
+        }
+
+        if (this.xd > maxSpeed) {
+            this.xd = maxSpeed;
+        }
+
+        if (this.zd < -maxSpeed) {
+            this.zd = -maxSpeed;
+        }
+
+        if (this.zd > maxSpeed) {
+            this.zd = maxSpeed;
+        }
+
+        if (this.onGround) {
+            this.xd *= 0.5;
+            this.yd *= 0.5;
+            this.zd *= 0.5;
+        }
+
+        this.move(this.xd, this.yd, this.zd);
+        double d8 = Math.sqrt(this.xd * this.xd + this.zd * this.zd);
+        if (d8 > 0.15) {
+            double d12 = Math.cos((double) this.yRot * Math.PI / 180.0);
+            double d15 = Math.sin((double) this.yRot * Math.PI / 180.0);
+
+            for (int i1 = 0; (double) i1 < 1.0 + d8 * 60.0; ++i1) {
+                double d18 = (double) (this.random.nextFloat() * 2.0F - 1.0F);
+                double d20 = (double) (this.random.nextInt(2) * 2 - 1) * 0.7;
+                if (this.random.nextBoolean()) {
+                    double d21 = this.x - d12 * d18 * 0.8 + d15 * d20;
+                    double d23 = this.z - d15 * d18 * 0.8 - d12 * d20;
+                    this.world.spawnParticle("splash", d21, this.y - 0.125, d23, this.xd, this.yd, this.zd);
+                } else {
+                    double d22 = this.x + d12 + d15 * d18 * 0.7;
+                    double d24 = this.z + d15 - d12 * d18 * 0.7;
+                    this.world.spawnParticle("splash", d22, this.y - 0.125, d24, this.xd, this.yd, this.zd);
+                }
+            }
+        }
+
+        this.xd *= 0.99F;
+        this.yd *= 0.95F;
+        this.zd *= 0.99F;
+        this.xRot = 0.0F;
+        double d13 = (double) this.yRot;
+        double d16 = this.xo - this.x;
+        double d17 = this.zo - this.z;
+        if (d16 * d16 + d17 * d17 > 0.001) {
+            d13 = (double) ((float) (Math.atan2(d17, d16) * 180.0 / Math.PI));
+        }
+
+        double d19 = d13 - (double) this.yRot;
+
+        while (d19 >= 180.0) {
+            d19 -= 360.0;
+        }
+
+        while (d19 < -180.0) {
+            d19 += 360.0;
+        }
+
+        if (d19 > 20.0) {
+            d19 = 20.0;
+        }
+
+        if (d19 < -20.0) {
+            d19 = -20.0;
+        }
+
+        this.yRot = (float) ((double) this.yRot + d19);
+        this.setRot(this.yRot, this.xRot);
+        List list = this.world.getEntitiesWithinAABBExcludingEntity(this, this.bb.expand(0.2F, 0.0, 0.2F));
+        if (list != null && list.size() > 0) {
+            for (int j1 = 0; j1 < list.size(); ++j1) {
+                Entity entity = (Entity) list.get(j1);
+                if (entity != this.passenger && entity.isPushable() && entity instanceof EntityBoat) {
+                    entity.push(this);
+                }
+            }
+        }
+
+        for (int k1 = 0; k1 < 4; ++k1) {
+            int l1 = MathHelper.floor_double(this.x + ((double) (k1 % 2) - 0.5) * 0.8);
+            int i2 = MathHelper.floor_double(this.y);
+            int j2 = MathHelper.floor_double(this.z + ((double) (k1 / 2) - 0.5) * 0.8);
+            if (this.world.getBlockId(l1, i2, j2) == Block.layerSnow.id) {
+                this.world.setBlockWithNotify(l1, i2, j2, 0);
+            }
+        }
+
+        if (this.passenger != null && this.passenger.removed) {
+            this.passenger = null;
+        }
+    }
     @Unique
     private void buoyancy(){
         int i = 5;
