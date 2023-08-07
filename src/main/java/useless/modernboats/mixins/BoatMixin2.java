@@ -71,7 +71,7 @@ public class BoatMixin2 extends Entity {
             tickSinglePlayer();;
         }
         else{
-            tickMultiplayer();
+            tickServer();
         }
     }
     @Unique
@@ -180,7 +180,7 @@ public class BoatMixin2 extends Entity {
     }
 
     @Unique
-    public void tickMultiplayer(){
+    public void tickServer(){
         super.tick();
         if (this.boatTimeSinceHit > 0) {
             --this.boatTimeSinceHit;
